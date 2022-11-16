@@ -1,0 +1,230 @@
+---
+title: "411-Group C"
+author: "Roderick Fan"
+date: "2022-10-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Cleaning the Global Envrionment
+```{r}
+rm(list=ls(all=T))
+```
+
+Import Necessary Packages and Read Data
+```{r}
+library(tidyverse)
+library(here)
+library(gridExtra)
+library(GGally)
+library(gplots)
+
+h2015 <- read.csv(here("happiness_2015-2019","2015.csv"))
+h2015 <- h2015[-c(5,12)]
+h2015$Year <- 2015
+h2015 <- h2015[, c(11,1:10)]
+h2016 <- read.csv(here("happiness_2015-2019","2016.csv"))
+h2016 <- h2016[-c(5,6,13)]
+h2016$Year <- 2016
+h2016 <- h2016[, c(11,1:10)]
+h2017 <- read.csv(here("happiness_2015-2019","2017.csv"))
+h2017 <- h2017[-c(4,5,12)]
+h2017$Year <- 2017
+h2017$Region <- NA
+h2017 <- h2017[, c(10,1,11,2:7,9,8)]
+h2018 <- read.csv(here("happiness_2015-2019","2018.csv"))
+h2018$Year <- 2018
+h2018$Perceptions.of.corruption <- as.numeric(h2018$Perceptions.of.corruption)
+h2018$Region <- NA
+h2018 <- h2018[, c(10,2,11,1,3:7,9,8)]
+h2019 <- read.csv(here("happiness_2015-2019","2019.csv"))
+h2019$Year <- 2019
+h2019$Region <- NA
+h2019 <- h2019[, c(10,2,11,1,3:7,9,8)]
+h2020 <- read.csv(here("happiness_2015-2019","2020.csv"))
+h2020 <- h2020[,c(1,2,4,3,14:17,19,18)]
+h2020$Year <- 2020
+h2020 <- h2020[,c(11,1:10)]
+h2020$Regional.indicator <- NA
+  
+  
+t(t(colnames(h2015)))
+t(t(colnames(h2016)))
+t(t(colnames(h2017)))
+t(t(colnames(h2018)))
+t(t(colnames(h2019)))
+t(t(colnames(h2020)))
+
+names(h2018) <- c("Year","Country","Region","Happiness.Rank","Happiness.Score","Economy..GDP.per.Capita.",
+                  "Family","Health..Life.Expectancy.","Freedom","Trust..Government.Corruption.","Generosity")
+names(h2019) <- c("Year","Country","Region","Happiness.Rank","Happiness.Score","Economy..GDP.per.Capita.",
+                  "Family","Health..Life.Expectancy.","Freedom","Trust..Government.Corruption.","Generosity")
+names(h2020) <- c("Year","Country","Region","Happiness.Rank","Happiness.Score","Economy..GDP.per.Capita.",
+                  "Family","Health..Life.Expectancy.","Freedom","Trust..Government.Corruption.","Generosity")
+
+
+htotal <- rbind(h2015,h2016,h2017,h2018,h2019,h2020)
+htotal <-  htotal%>%
+  group_by(Country) %>%
+  fill(Region)%>%
+  drop_na()
+
+#Drop Ranking
+htotal <- htotal[,-4]
+
+#Categorize Continent
+unique(htotal$Region)
+
+n <- length(htotal$Region)
+for (i in 1:n){
+  if(htotal$Region[i] == "Western Europe" || 
+     htotal$Region[i] == "Central and Eastern Europe"){
+     htotal$Region[i] <- "Europe"
+  } else{}
+}
+
+for (i in 1:n){
+  if(htotal$Region[i] == "Middle East and Northern Africa" || 
+     htotal$Region[i] == "Sub-Saharan Africa"){
+     htotal$Region[i] <- "Africa"
+  } else{}
+}
+
+for (i in 1:n){
+  if(htotal$Region[i] == "Southern Asia" || 
+     htotal$Region[i] == "Eastern Asia"|| 
+     htotal$Region[i] == "Southeastern Asia"
+     ){
+     htotal$Region[i] <- "Asia"
+  } else{}
+}
+
+for (i in 1:n){
+  if(htotal$Region[i] == "Latin America and Caribbean"
+     ){
+     htotal$Region[i] <- "South America"
+  } else{}
+}
+
+
+
+h2015 <- htotal %>%
+  filter(Year == 2015)
+h2016 <- htotal %>%
+  filter(Year == 2016)
+h2017 <- htotal %>%
+  filter(Year == 2017)
+h2018 <- htotal %>%
+  filter(Year == 2018)
+h2019 <- htotal %>%
+  filter(Year == 2019)
+h2020 <- htotal %>%
+  filter(Year == 2020)
+
+t(t(colnames(htotal)))
+
+
+
+
+```
+
+
+```{r}
+numeric.var <- htotal[,c(5:10)]
+ggpairs(numeric.var)
+```
+
+
+Distribution of Happiness score in each region (5 years total)
+```{r}
+summary(htotal$Happiness.Score)
+mean(htotal$Happiness.Score)
+
+htotal_cut <- htotal
+#htotal_cut$Happiness.Score <- cut(htotal_cut$Happiness.Score, c(0,1,2,3,4.5,5,5.5,6,6.5,7,7.5,8))
+htotal_cut$Year <- as.factor(htotal_cut$Year)
+
+htotal_cut_E <- subset(htotal_cut,Region == "Europe")
+htotal_cut_A <- subset(htotal_cut,Region == "Asia")
+htotal_cut_N <- subset(htotal_cut,Region == "North America")
+htotal_cut_S <- subset(htotal_cut,Region == "South America")
+htotal_cut_F <- subset(htotal_cut,Region == "Africa")
+
+ggplot(htotal_cut_E, aes(x=Year, y=Happiness.Score)) + 
+  geom_boxplot()+
+  geom_point(aes(color=Year),alpha=0.3)+
+  theme(legend.position = "None")
+
+ggplot(htotal_cut_A, aes(x=Year, y=Happiness.Score)) + 
+  geom_boxplot()+
+  geom_point(aes(color=Year),alpha=0.3)+
+  theme(legend.position = "None")
+
+ggplot(htotal_cut_N, aes(x=Year, y=Happiness.Score)) + 
+  geom_boxplot()+
+  geom_point(aes(color=Year),alpha=0.3)+
+  theme(legend.position = "None")
+
+ggplot(htotal_cut_S, aes(x=Year, y=Happiness.Score)) + 
+  geom_boxplot()+
+  geom_point(aes(color=Year),alpha=0.3)+
+  theme(legend.position = "None")
+
+ggplot(htotal_cut_F, aes(x=Year, y=Happiness.Score)) + 
+  geom_boxplot()+
+  geom_point(aes(color=Year),alpha=0.3)+
+  theme(legend.position = "None")
+```
+
+Mean Value of GDP per Capita in 5 years and Happiness Score in five years in Each Region 
+```{r}
+htotal_mean <- htotal %>%
+  group_by(Region)
+
+
+ggplot(htotal, aes(x=Economy..GDP.per.Capita.,
+                   y=Happiness.Score, 
+                   color=Region, 
+                   size=Happiness.Score))+
+  geom_point(alpha=0.4,size=0.5)+
+  facet_wrap(~Region, nrow = 3) +
+  theme(legend.position = "none")+
+  labs(x="Happiness Score",
+       y="GDP per Capita (Economy Scale)",
+       title = "Relationship Between Happiness Score and GDP per Capita")
+
+
+```
+
+growth rate (?)
+change of mean value in each region in the past five years. 
+```{r}
+
+```
+
+
+
+```{r}
+ggplot(htotal, aes(x=Economy..GDP.per.Capita.,
+                   y=Health..Life.Expectancy., 
+                   color=Happiness.Score, 
+                   size=Happiness.Score))+
+  geom_point(alpha=0.5)+
+  facet_wrap(~Year, nrow = 2) +
+  geom_smooth(se = F)+
+  scale_color_gradientn(colors =rainbow(unique(htotal$Happiness.Score)))+
+  theme(legend.position = "right")+
+  labs(x="Family Satisfication Level",
+       y="Health Life Expectancy",
+       title= "Family Satisfication Level v.s. Health Life Expectancy")
+
+```
+
+
+```{r}
+ggplot(data = htotal)+
+  geom
+```
