@@ -1,0 +1,85 @@
+---
+title: "Practice Assignment Solution"
+output:
+  pdf_document: default
+  html_document: default
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Sales of Riding Mowers. 
+
+A company that manufactures riding mowers wants to identify the best sales prospects for an intensive sales campaign. In particular, the man- ufacturer is interested in classifying households as prospective owners or nonowners on the basis of Income (in $1000s) and Lot Size (in 1000 ft2). The marketing expert looked at a random sample of 24 households, given in the file RidingMowers.csv. Use all the data to fit a logistic regression of ownership on the two predictors.
+
+```{r load the data, warning = FALSE, message = FALSE}
+mowers.df <-read.csv("RidingMowers.csv")
+t(t(names(mowers.df)))
+```
+
+## Bullet a
+What percentage of households in the study were owners of a riding mower?
+
+```{r a, warning = FALSE, message = FALSE}
+owner.riding.mower <- table(mowers.df$Ownership)
+prop.table(owner.riding.mower)
+```
+
+*50% of households were owners of riding mowers.*
+
+## Bullet b
+Create a scatter plot of Income vs. Lot Size using color or symbol to distinguish owners from nonowners. From the scatter plot, which class seems to have a higher average income, owners or nonowners? 
+```{r b, warning = FALSE, message = FALSE}
+library(ggplot2)
+ggplot(mowers.df, aes(x=Lot_Size, y=Income, color = Ownership))+geom_point()
+```
+*From the scatterplot it appears that "owners" tend to have a higher average income.*
+
+## Bullet c
+Fit a logistic regression model for all dataset. Among nonowners, what is the percentage of households classified correctly? (Hint: Use confusionMatrix)
+```{r c, warning = FALSE, message = FALSE}
+reg<-glm(ifelse(mowers.df$Ownership=="Owner",1,0) ~ ., data = mowers.df, family = "binomial") 
+#summary(reg)
+library(caret)
+confusionMatrix(as.factor(ifelse(reg$fitted.values > 0.5, 1, 0)), 
+                as.factor(ifelse(mowers.df$Ownership=="Owner",1,0)))
+```
+*Based on the confusionMatrix report, the accuracy is %83.33*
+
+## Bullet d)
+To increase the percentage of correctly classified nonowners, should the cutoff probability be increased or decreased? 
+
+*From the classification confusion matrix shown in (c) we can see that 10 of the 12 non-owners are correctly classified. If we increase the cutoff (i.e. make it harder to be classified as an owner), we can reduce the number of non-owners misclassified as owners, and improve the classification performance with non-owners. (Of course, this will be at the cost of misclassifying more of the owners as non-owners.)*
+
+## Bullet e)
+What are the odds that a household with a $60K income and a lot size of 20,000 ft2 is an owner? 
+```{r e, warning = FALSE, message = FALSE}
+logit <- c(1, 60, 20) %*% reg$coefficients
+odds <- exp(-logit)
+odds
+```
+## Bullet f)
+f.	What is the classification of a household with a $60K income and a lot size of 20,000 ft2? Use cutoff = 0.5. 
+```{r f, warning = FALSE, message = FALSE}
+logit <- c(1, 60, 20) %*% reg$coefficients
+odds <- exp(-logit)
+prob <- 1/(1+odds)
+prob
+```
+*probability that the new household is 0.4972 and thus the predicted class
+for this new household is 0, or "non-owner".*
+
+## Bullet g) 
+What is the minimum income that a household with 16,000 ft2 lot size should have before it is classified as an owner?
+
+*The cutoff of 0.5 on the probability of owner is equivalent to a threshold of 0 on the logit. We therefore write the estimated logit equation, equate it to 0 and set Lot_Size=16.*
+
+```{r g, warning = FALSE, message = FALSE}
+# 0 = -25.9382 + 0.1109 * Income + 0.9638 * Lot_Size.
+# We plug Lot_Size = 16 and solve for Income.
+Income <- (25.9382 - (0.9638*16)) / 0.1109
+Income
+```
+*The minimum income needed for this household to be classified as "owner" is $94.8368K*

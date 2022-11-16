@@ -1,0 +1,99 @@
+---
+title: "Assignment 4"
+author: "Roderick Fan"
+date: "2022-09-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Cleaning Environment
+rm(list = ls(all=TRUE))
+```
+
+```{r}
+#Import packages
+library(tidyverse)
+library(here)
+library(gplots)
+library(forecast)
+```
+
+```{r}
+#Loading Data
+air <- read.csv(here("Airfares.csv"))
+
+pairs(air[,c(5,6,9,10,11,12,13,16,17,18)])
+
+heatmap.2(cor(air[,c(5,6,9,10,11,12,13,16,17,18)]), Rowv = FALSE, Colv = FALSE, dendrogram = "none", 
+          cellnote = round(cor(air[,c(5,6,9,10,11,12,13,16,17,18)]),2), 
+          notecol = "blue", key = FALSE, trace = 'none', margins = c(10,10))
+
+```
+
+According to the scatter plot matrix and heat map, we can see that Distance might be
+the best single predictor of FARE.
+
+
+```{r}
+# Exploring Categorical Predictor Excluding First Four
+air2 <- air[,-c(1,2,3,4)]
+
+# Dropping Numerical Variable and Turning categorical variable into dummy variable
+air3 <- air2[,-c(1,2,5,6,7,8,9,12,13)]
+
+unique(air3$VACATION)
+unique(air3$SW)
+unique(air3$SLOT)
+unique(air3$GATE)
+
+air3$VACATION <- ifelse(air3$VACATION=="Yes",1,0)
+air3$SW <- ifelse(air3$SW=="Yes",1,0)
+air3$SLOT <- ifelse(air3$SLOT=="Free",1,0)
+air3$GATE <- ifelse(air3$GATE=="Free",1,0)
+
+
+vacation <- prop.table(table(air3$VACATION))
+sw <- prop.table(table(air3$SW))
+slot <- prop.table(table(air3$SLOT))
+gate <- prop.table(table(air3$GATE))
+
+a1 <- aggregate(air3$FARE,list(air3$VACATION),mean)
+a2 <- aggregate(air3$FARE,list(air3$SW),mean)
+a3 <- aggregate(air3$FARE,list(air3$SLOT),mean)
+a4 <- aggregate(air3$FARE,list(air3$GATE),mean)
+
+
+total <- rbind(a1,a2,a3,a4)
+total.prop <- rbind(vacation,sw,slot,gate)
+total
+total.prop
+```
+
+According to the pivot table, we can see that the average fare for constraint gate is the 
+highest and the lowest is for the the routes that southwest airline runs. So we choose GATE
+as the categorical predictor.
+
+```{r}
+#Part C (a) Constructing Training Set and Testing Set
+
+set.seed(123)
+index <- sample(c(1:length(air2$FARE)), length(air2$FARE)*.6)
+
+training <- air2[index,]
+validation <- air2[-index,]
+```
+
+```{r}
+air.lm <- lm(FARE~VACATION+SW+HI+S_POP+E_POP+SLOT+GATE+DISTANCE+PAX, data = training)
+
+summary(air.lm)
+pred <- predict(air.lm)
+
+air.lm.train <- predict(air.lm,validation)
+
+accuracy(air.lm.train, validation$FARE)
+```
+

@@ -1,0 +1,201 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#Cleaning Environment
+rm(list=ls(all=TRUE))
+```
+
+```{r}
+#Install Required Packages
+install.packages("tidyverse")
+install.packages("ggplot2")
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+co2source = read.csv("CO2-by-source.csv")
+co2annual = read.csv("annual-co2-emissions-per-country.csv")
+data = read_csv("Europe_Power.csv")
+```
+
+```{r}
+#Clean data
+co2source = subset(co2source, Entity == "Austria" | Entity == "Belgium" | Entity == "Croatia" | 
+                              Entity == "Czech Republic" | Entity == "Denmark" | Entity == "Estonia" |
+                              Entity == "Finland" | Entity == "France" | Entity == "Germany" | 
+                              Entity == "Greece" | Entity == "Hungary" | Entity == "Ireland" |
+                              Entity == "Italy" | Entity == "Latvia" | Entity == "Lithuania" |
+                              Entity == "Netherlands" | Entity == "Poland" | Entity == "Portugal" | 
+                              Entity =="Romania" | Entity =="Slovakia" | Entity =="Slovenia" | 
+                              Entity =="Spain" | Entity == "Sweden" | Entity == "United Kingdom")
+
+co2annual = subset(co2annual, Entity == "Austria" | Entity == "Belgium" | Entity == "Croatia" | 
+                              Entity == "Czech Republic" | Entity == "Denmark" | Entity == "Estonia" | 
+                              Entity == "Finland" | Entity == "France" | Entity == "Germany" | 
+                              Entity == "Greece" | Entity == "Hungary" | Entity == "Ireland" | 
+                              Entity == "Italy" | Entity == "Latvia" | Entity == "Lithuania" | 
+                              Entity == "Netherlands" | Entity == "Poland" | Entity == "Portugal" | 
+                              Entity =="Romania" | Entity =="Slovakia" | Entity =="Slovenia" | 
+                              Entity =="Spain" | Entity == "Sweden" | Entity == "United Kingdom")
+
+co2annual = subset(co2annual, Year >= 1900)
+co2source = subset(co2source, Year >= 1900)
+
+co2df = merge(co2annual, co2source)
+co2df = co2df[,-c(2)]
+
+columns = c("Country", "Year", "CO2_Emissions", "CO2_Emmission_per_Capita",
+            "CO2_from_Coal","CO2_from_Gas", "CO2_from_Cement","CO2_from_Flaring",
+            "CO2_from Oil", "CO2_from_Other")
+
+colnames(co2df) = columns
+
+co2df_sub = subset(co2df[,1:3])
+co2df_sub = subset(co2df_sub, Country =="Germany"|Country =="Italy"|Country =="France"|Country =="United Kingdom"|
+                              Country =="Poland"|Country =="Spain")
+theme_set(theme_light(base_size = 8))
+
+ggplot(data = co2df_sub, mapping = aes(x =Year, group = Country, y = CO2_Emissions, color = Country)) +
+  geom_line(size  = 1) + 
+  geom_point() +
+  geom_vline(xintercept = 1945,color = "grey")+
+  geom_vline(xintercept = 1979,color = "grey")+
+  geom_vline(xintercept = 2003,color = "grey")+
+  scale_fill_brewer(palette="Pastel1") +
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+
+  ggtitle("Emission of Carbon Dioxide for Six Major Countries (1900-2020)") + 
+  xlab("Year") +
+  ylab("Emission of Carbon Dioxide")+
+  annotate("text", x = 1948, y = 1, size = 2.5, color = "gray20",
+           label = paste("1945"))+
+  annotate("text", x = 1981, y = 1, size = 2.5, color = "gray20",
+           label = paste("1979"))+
+  annotate("text", x = 2006, y = 1, size = 2.5, color = "gray20",
+           label = paste("2003"))
+
+```
+
+```{r}
+
+co2df_sub2 = subset(co2df[,-c(3:4)])
+
+co2df_sub2_g = gather(co2df_sub2,variable,amount,3:8)
+co2df_sub2_g = subset(co2df_sub2_g, Country =="Germany"|Country =="Italy"|Country =="France"|Country =="United Kingdom"|Country =="Poland"|Country =="Spain")
+
+ggplot(co2df_sub2_g, aes(x=factor(Year),y=amount,fill=variable))+
+  geom_col(postion="stack")+
+  facet_wrap(~Country, nrow = 6)+
+  theme(axis.text.x = element_text(angle=90, vjust=.5, hjust=1))+
+  scale_fill_brewer(palette="Pastel1")+
+  ggtitle("Emission of Carbon Dioxide for Six Major Countries (1900-2020)") + 
+  xlab("Year") +
+  ylab("Emission of Carbon Dioxide")
+```
+
+```{r}
+head(data)
+
+df = data %>% 
+  filter(Variable == "Fossil" | Variable == "Renewables"  | Variable == "Bioenergy"| Variable == "Hydro"| Variable == "Hydro"| Variable == "Other renewables"| Variable == "Solar"| Variable == "Wind" ) %>% 
+  filter(Year >= 2000, Year <= 2020)%>%    
+  select(Year,Variable,`Generation (TWh)`)%>%    
+  group_by(Year,Variable)%>%  
+  summarise(v = sum(`Generation (TWh)`))
+
+df1  = df %>%
+  group_by(Year)%>%
+  summarise(sum = sum(v))
+
+d = left_join(df,df1)
+d$percentage = round( d$v/ d$sum,2)
+ggplot(data = d, mapping = aes(x =factor(Year) , fill = Variable, y = percentage)) + 
+  geom_col() +
+  scale_fill_brewer(palette="Pastel1") 
+  ggtitle("Renewables growth driven by wind and solar \nShare of electricity production in EU-27") + 
+  xlab("Year") +
+  ylab("Share of Energy Production")
+
+
+df = data %>% 
+  filter(Variable == "Fossil" | Variable == "Renewables"  | Variable == "Coal"| Variable == "Wind and solar" ) %>% 
+  filter(Year >= 2010, Year <= 2020)%>%
+  group_by(Year,Variable) %>%
+  summarise(v = sum(`Generation (TWh)`)) 
+
+df1  = df %>%
+  group_by(Year)%>%
+  summarise(sum = sum(v))
+d = left_join(df,df1)
+d$percentage = round( d$v/ d$sum,2)
+ggplot(data = d, mapping = aes(x =factor(Year) , group = Variable, y =percentage,color = Variable)) +
+  geom_line(size  = 1) + 
+  geom_point() +
+  scale_fill_brewer(palette="Pastel1") +
+  ggtitle("Renewables Overtake Fossil Fuel\nShare of Electricity Production in EU-27") + 
+  xlab("Year") +
+  ylab("Share of Electricity Production in EU-27")
+```
+
+```{r}
+b = data %>% 
+  filter(Area == "Germany" | Area == "Spain"  | Area == "France"| Area == "Italy"| Area == "Sweden"| Area == "Netherlands"| Area == "Poland"| Area == "Denmark"| Area == "Belgium"| Area == "United Kingdom" ) %>% 
+  filter(Year >= 2015, Year <= 2020) %>%
+  filter(Variable ==  "Wind and solar")%>% 
+  select(Year,Area,`Generation (TWh)`)
+
+ggplot(data = b, mapping = aes(x = factor(Year), y = `Generation (TWh)`))+
+  facet_wrap(~ Area, nrow = 2) + 
+  geom_col(fill="darkolivegreen2") + 
+  geom_text(aes(label = `Generation (TWh)`), vjust = -0.5,size = 2) + 
+  xlab("Year") +
+  ylab("Terawatt Hours") + 
+  ggtitle("Wind and solar generation (Barplot)\nWind and solar continues its rise")
+
+```
+```{r}
+#Total EU Emission
+
+df_lm = co2df_sub %>% 
+  group_by(Year) %>%
+  summarise(emission_EU = sum(CO2_Emissions))
+
+ggplot(data = df_lm, mapping = aes(x = Year, y = emission_EU)) +
+  geom_line(size=0.5) +
+  geom_point(size=1) +
+  xlab("Year") +
+  ylab("EU Total CO2 Emissions") + 
+  ggtitle("EU Total CO2 Emissions from 1900 to 2020")
+
+
+```
+```{r}
+df_cor = co2df %>% 
+  group_by(Year, Country, CO2_Emmission_per_Capita, CO2_Emissions) %>% 
+  filter(Country =="Germany"|Country =="Italy"|Country =="France"|Country =="United Kingdom"|
+         Country =="Poland"|Country =="Spain")
+  
+
+ggplot(data = df_cor, mapping = aes(x = Year , group = Country, y =CO2_Emmission_per_Capita,color = Country)) +
+  geom_point()+
+  facet_wrap(~Country, nrow = 3) +
+  geom_smooth(method="lm") +
+  geom_vline(xintercept = 1945,color = "grey")+
+  geom_vline(xintercept = 1979,color = "grey")+
+  geom_vline(xintercept = 2003,color = "grey")+
+  annotate("text", x = 1948, y = 1, size = 2.5, color = "gray20",
+           label = paste("1975"))+
+  annotate("text", x = 1981, y = 1, size = 2.5, color = "gray20",
+           label = paste("1979"))+
+  annotate("text", x = 2006, y = 1, size = 2.5, color = "gray20",
+           label = paste("2003"))+
+  xlab("Year") +
+  ylab("EU CO2 Emissions per capita") + 
+  ggtitle("EU CO2 Emissions per capita from 1900 to 2020")
+
+```
+
+

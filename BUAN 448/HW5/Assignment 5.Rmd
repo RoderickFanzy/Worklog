@@ -1,0 +1,118 @@
+---
+title: "Assignment 5"
+author: "Roderick Fan"
+date: "2022-10-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#Cleaning Environment
+rm(list = ls(all=TRUE))
+```
+
+```{r}
+#Import packages
+library(tidyverse)
+library(here)
+library(gplots)
+library(forecast)
+library(leaps)
+```
+
+```{r}
+#Loading data
+air <- read.csv(here("Airfares.csv"))
+air2 <- air[,-c(1:4)]
+
+#Turning into Dummy Variables
+air2$VACATION <- ifelse(air2$VACATION=="Yes",1,0)
+air2$SW <- ifelse(air2$SW=="Yes",1,0)
+air2$SLOT <- ifelse(air2$SLOT=="Free",1,0)
+air2$GATE <- ifelse(air2$GATE=="Free",1,0)
+
+
+```
+
+```{r}
+set.seed(12)
+index <- sample(c(1:length(air2$FARE)), length(air2$FARE)*.6)
+
+training <- air2[index,]
+validation <- air2[-index,]
+```
+
+```{r}
+air.lm <- lm(FARE~., data = training)
+summary(air.lm)
+pred <- predict(air.lm)
+air.lm.train <- predict(air.lm,validation)
+accuracy(air.lm.train, validation$FARE)
+```
+
+```{r}
+#step wise regression
+stepwise <- lm(FARE~.,data=training)
+step_b <- step(stepwise, direction = "both")
+```
+
+```{r}
+#Step wise Regression with Exhaustive Search
+search <- regsubsets(FARE ~ .,
+                     data = air2,
+                     nbest = 1,
+                     nvmax = dim(training)[2],
+                     method = "exhaustive")
+
+sum <- summary(search)
+sum$which
+
+rsq <- sum$rsq
+adjr2 <- sum$adjr2
+cp <- sum$cp
+bic <- sum$bic
+
+cbind(rsq,adjr2,cp,bic)
+
+```
+```{r}
+t(t(sum$adjr2))
+# top 3 models
+models <-  order(sum$adjr2, decreasing = T)[1:3]
+models
+```
+According to step wise (FARE ~ VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + SLOT + GATE + DISTANCE + PAX)
+According to Exhaustive (FARE ~ NEW + VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + SLOT + GATE + DISTANCE + PAX)
+```{r}
+#Compare results given by step wise regression and exhaustive research
+air.step <- lm(FARE~ VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + 
+               SLOT + GATE + DISTANCE + PAX, data = training)
+
+pred.step <- predict(air.step, validation)
+acc.step <- accuracy(pred.step, validation$FARE)
+
+air.ex <- lm(FARE~ NEW + VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + 
+                   SLOT + GATE + DISTANCE + PAX, data = training)
+
+pred.ex <- predict(air.ex, validation)
+acc.ex <- accuracy(pred.ex, validation$FARE)
+
+
+t(cbind(acc.step,acc.ex))
+```
+
+```{r}
+library(gains)
+par(mfcol=c(1,2))
+gain1 <- gains(validation$FARE, pred.step)
+plot(c(0, gain1$cume.pct.of.total*sum(validation$FARE)) ~ c(0, gain1$cume.obs), xlab="Number of Cases", ylab="Cumulative", main = "Stepwise Selection", type="l")
+gain2 <- gains(validation$FARE, pred.ex)
+plot(c(0, gain2$cume.pct.of.total*sum(validation$FARE)) ~ c(0, gain2$cume.obs), xlab="Number of cases", ylab="Cumulative", main = "Exhaustive Selection",type="l")
+```
+
+According to the comparison between two models' accuracy (ME, RMSE, MAE, MPE, and MAPE)and Lift Charts, we can see that optimal model given by exhaustive research, predictive model based on 12 predictors, (NEW + VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + SLOT + GATE + DISTANCE + PAX). 
+However, since the predictive model based on 11 predictors(VACATION + SW + HI + S_INCOME + E_INCOME + S_POP + E_POP + SLOT + GATE + DISTANCE + PAX) given by step wise regression also has a close accuracy, we can also choose it as the final predictive model since it's less complex.

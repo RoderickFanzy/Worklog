@@ -1,0 +1,122 @@
+---
+title: "USA Mapping Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+```{r}
+library(maptools)
+library(ggplot2)
+library(RgoogleMaps)
+library(ggmap)
+
+# Unzip lowres US shapefiles from 
+#       https://www.census.gov/geo/maps-data/data/cbf/cbf_state.html
+
+# read administrative boundaries                              
+setwd("~/Dropbox/Courses/DSCI310/mapping") # or wherever you have your shapefiles
+myMap <- readShapePoly(fn="cb_2014_us_state_20m.shp")
+# extract sequence of points and assign IDs to states
+myMapDf <- fortify(myMap)
+
+library(foreign) # needed for read.dbf()
+db <- read.dbf("cb_2014_us_state_20m.dbf")
+db$rn <- as.integer(rownames(db))
+
+
+# ggplot mapping, limited to area around USA
+# data layer (empty map)
+m0 <- ggplot(data=myMapDf) + xlim(-130,-60) + ylim(20,50)
+# empty map + borders 
+m1 <- m0 + geom_path(aes(x=long, y=lat, group=group), color='gray')
+m1
+m1 + geom_polygon(aes(x=long, y=lat, group=group))
+```
+
+```{r}
+# what just happened?
+test <- read.table(col.names = c("long", "lat", "order", "id"),
+  text = "0 0 1 1 
+          0 1 2 1
+          1 1 3 1
+          1 0 4 1 
+          0 0 5 1
+          2 0 1 2
+          3 1 2 2 
+          4 0 3 2
+          2 0 4 2
+  ")
+testplot <- ggplot(data=test) 
+testplot + geom_path(aes(x=long, y=lat, group=id), color='black', size=2)
+testplot + geom_polygon(aes(x=long, y=lat, group=id), fill="light gray", color='orange', size=3)
+```
+
+```{r}
+# fill with a value to illustrate
+m2 <- m1 + geom_polygon(aes(x=long, y=lat, group=group, fill=id))
+m2
+```
+
+```{r}
+str(myMapDf)
+```
+
+```{r}
+# interpret as integer
+myMapDf$id3 <- as.integer(myMapDf$id)
+# tighten the margins
+m0 <- ggplot(data=myMapDf) + xlim(-125,-65) + ylim(24,50)
+# fill with a value to illustrate
+m1 <- m0 + geom_polygon(aes(x=long, y=lat, group=group, fill=id3))
+m2 <- m1 + geom_path(aes(x=long, y=lat, group=group), color='black')
+m2
+```
+
+```{r}
+# over a GoogleMap
+latlng = Addr2latlng("USA")
+map <- get_googlemap(center=c(latlng[2], latlng[1]), zoom=3, key = "YOURKEY")
+
+m0 <- ggmap(map) + xlim(-125,-65) + ylim(24,50)
+m1 <- m0 + geom_polygon(aes(x=long, y=lat, group=group, fill=id3), data=myMapDf)
+m2 <- m1 + geom_path(aes(x=long, y=lat, group=group), data=myMapDf, color='black')
+m2
+```
+
+```{r}
+# over a GoogleMap
+m0 <- ggmap(map) + xlim(-125,-65) + ylim(24,50)
+m1 <- m0 + geom_polygon(aes(x=long, y=lat, group=group, fill=id3), data=myMapDf, alpha=.7)
+m2 <- m1 + geom_path(aes(x=long, y=lat, group=group), data=myMapDf, color='black')
+m2
+```
+
+```{r}
+library(doBy)
+txtVal <- summaryBy(long + lat ~ id3, data=myMapDf, FUN=mean, keep.names=T)
+m3 <- m2 + geom_text(aes(x=long, y=lat, label=db[id3+1,"STUSPS"]), data=txtVal, col="yellow", cex=2)
+m3
+```
+
+```{r}
+# This website has been rebuilt; unclear where this file is now
+censusdensity <- read.csv("https://www.census.gov/2010census/csv/pop_density.csv", header=TRUE, skip=3)
+db2 <- merge(db, censusdensity, by.x="NAME", by.y="STATE_OR_REGION")
+db2$density <- log(as.numeric(gsub(",", "", db2$X2010_DENSITY)))
+
+myMapAugDf <- merge(myMapDf, db2, by.x="id3", by.y="rn")
+
+m0 <- ggmap(map) + xlim(-125,-65) + ylim(24,50)
+m1 <- m0 + geom_polygon(aes(x=long, y=lat, group=group, fill=density),
+   data=myMapAugDf, alpha=.7) + scale_fill_gradient(low="white", high="black")
+m2 <- m1 + geom_path(aes(x=long, y=lat, group=group), data=myMapDf,
+   color='black')
+m2
+```
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file).

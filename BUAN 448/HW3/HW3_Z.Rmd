@@ -1,0 +1,55 @@
+---
+title: "BUAN 448, HW3"
+output: html_document
+date: "2022-09-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1: Shipments of Household Appliances: Line Graphs
+
+The file ApplianceShipments.csv contains the series of quarterly shipments (in millions of dollars) of US house- hold appliances between 1985 and 1989. Answer the following questions using the dataset: 
+
+* Item a) Create a well-formatted time plot of the data using ts and plot functions. (Hint: follow the same way we did in class) By looking at the plot, does there appear to be a quarterly pattern?
+
+```{r code, Place your r code here for Q1 part a}
+library(ggplot2)
+library(forecast)
+
+p <- read.csv("ApplianceShipments.csv")
+p_1 <- ts(p$Shipments, start = c(1985,1), end=c(1989,4), frequency = 4)
+plot(p_1, xlab ="Time",
+     ylab = "Shipment",
+     ylim = c (3500, 5000),
+     main = "Quarterly Shipments between 1985 and 1989")
+```
+
+
+## Question 2: Sales of Riding Mowers: Scatter Plots.
+A company that manufactures riding mowers wants to identify the best sales prospects for an intensive sales campaign. In particular, the manufacturer is interested in classifying households as prospective owners or nonowners on the basis of Income (in $1000s) and Lot Size (in 1000 ft2). The marketing expert looked at a random sample of 24 households, given in the file RidingMowers.csv.
+
+* Item a) Using R, create a scatter plot of Lot Size vs. Income by plot function. By looking at the plot, do you get an insight? 
+
+
+```{r code, Place your r code here for Q2 part a}
+x <- read.csv("RidingMowers.csv")
+plot(y = x$Income,
+     x = x$Lot_Size,
+     ylab = "Income",
+     xlab = "Size",
+     main= "Lot Size vs. Income")
+```
+
+* Item b) Using R, create a scatter plot of Lot Size vs. Income, color-coded by the outcome variable owner/nonowner by ggplot function (There is an argument for "aes" object that you can color points based on the variable you choose). This time you color the points by Ownership. Now, by looking at the plot, would you get a conclusion that there is a relationship between Lot_Size and Ownership. Justify your answer. 
+
+
+```{r code, Place your r code here for Q2 part b}
+ggplot(x) + geom_point(aes(x = Lot_Size, y = Income, color = Ownership)) +
+facet_wrap(~Ownership, ncol = 2) +
+xlab("Size") +
+ylab("Income ") +
+ggtitle("Relationship between Lot_Size and Ownership")
+```
+

@@ -1,0 +1,162 @@
+---
+title: "NN"
+author: "Roderick Fan"
+date: "2022-11-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list = ls(all=T))
+cat("\14")
+library(here)
+library(tidyverse)
+library(neuralnet)
+library(caret)
+library(forecast)
+library(Metrics)
+
+cars <- read.csv(here("HW","ToyotaCorolla.csv"))
+```
+
+```{r}
+t(t(colnames(cars)))
+cars.df <- cars[,c(3,4,7,8,9,12,14,17,19,21,25,26,28,30,34,39)]
+
+unique(cars.df$Fuel_Type)
+
+cars.df$Diesel <- ifelse(cars.df$Fuel_Type=="Diesel",1,0)
+cars.df$Petrol <- ifelse(cars.df$Fuel_Type=="Petrol",1,0)
+cars.df$CNG <- ifelse(cars.df$Fuel_Type=="CNG",1,0)
+
+t(t(colnames(cars.df)))
+
+cars.df <- cars.df[,-c(4)]
+
+```
+
+```{r}
+train.index <- sample(c(1:dim(cars.df)[1]), dim(cars.df)[1]*0.6)
+
+train.df <- cars.df[train.index, ]
+valid.df <- cars.df[-train.index, ]
+```
+
+```{r}
+norm.values <- preProcess(train.df, method="range") 
+train.norm.df <- predict(norm.values, train.df)
+valid.norm.df <- predict(norm.values, valid.df)
+```
+
+single layers with 2 nodes
+```{r}
+nn1.2 <- neuralnet(train.norm.df$Price ~ Age_08_04+
+                     KM+
+                     HP+
+                     Automatic+
+                     Doors+
+                     Quarterly_Tax+
+                     Mfr_Guarantee+
+                     Guarantee_Period+
+                     Airco+
+                     Automatic_airco+
+                     CD_Player+
+                     Powered_Windows+
+                     Sport_Model+
+                     Tow_Bar+
+                     Diesel+
+                     Petrol+
+                     CNG,
+                data = train.norm.df, linear.output = T,
+                hidden = 2)
+plot(nn1.2, rep = "best")
+
+
+```
+
+
+single layers with 5 nodes
+```{r}
+nn1.5 <- neuralnet(train.norm.df$Price ~ Age_08_04+
+                     KM+
+                     HP+
+                     Automatic+
+                     Doors+
+                     Quarterly_Tax+
+                     Mfr_Guarantee+
+                     Guarantee_Period+
+                     Airco+
+                     Automatic_airco+
+                     CD_Player+
+                     Powered_Windows+
+                     Sport_Model+
+                     Tow_Bar+
+                     Diesel+
+                     Petrol+
+                     CNG,
+                data = train.norm.df, linear.output = T,
+                hidden = 5)
+plot(nn1.5, rep = "best")
+```
+
+
+two layers with 5 nodes each
+```{r}
+nn2.5 <- neuralnet(train.norm.df$Price ~ Age_08_04+
+                     KM+
+                     HP+
+                     Automatic+
+                     Doors+
+                     Quarterly_Tax+
+                     Mfr_Guarantee+
+                     Guarantee_Period+
+                     Airco+
+                     Automatic_airco+
+                     CD_Player+
+                     Powered_Windows+
+                     Sport_Model+
+                     Tow_Bar+
+                     Diesel+
+                     Petrol+
+                     CNG,
+                data = train.norm.df, linear.output = T,
+                hidden = c(5,5))
+plot(nn2.5, rep = "best")
+```
+
+
+```{r}
+set.seed(10086)
+
+pred.train.1.2 <- compute(nn1.2, train.norm.df[,-1])$net.result
+rmse(train.norm.df[,"Price"], pred.train.1.2)
+pred.train.1.5 <- compute(nn1.5, train.norm.df[,-1])$net.result
+rmse(train.norm.df[,"Price"], pred.train.1.5)
+pred.train.2.5 <- compute(nn2.5, train.norm.df[,-1])$net.result
+rmse(train.norm.df[,"Price"], pred.train.2.5)
+
+#As the number of layers and nodes for neural network increase, the MRSE for training data will drop.
+
+```
+
+RMS error for the validation data
+```{r}
+
+pred.valid.1.2 <- compute(nn1.2, valid.norm.df)$net.result
+rmse(valid.norm.df[,"Price"], pred.valid.1.2)
+
+pred.valid.1.5 <- compute(nn1.5, valid.norm.df)$net.result
+rmse(valid.norm.df[,"Price"], pred.valid.1.5)
+
+pred.valid.2.5 <- compute(nn2.5, valid.norm.df)$net.result
+rmse(valid.norm.df[,"Price"], pred.valid.2.5)
+
+#As the number of layers and nodes for neural network increase, the MRSE for validation data will drop.
+```
+
+```{r}
+#As the number of layers and nodes for neural network increase, the MRSE should drop. However, due to the complexity and intend to avoid overfitting, I believe the appropriate number of layers and nodes for this application will be 1 hidden layers with 5 nodes.
+```
+
